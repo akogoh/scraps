@@ -16,9 +16,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   final List<OnboardingData> _onboardingData = [
     OnboardingData(
-      title: "Sell Your Scrap",
+      title: "Submit Your Scrap",
       description:
-          "Turn your old household items into cash (old fridge, washing machine, metals scraps, broken engines)",
+          "Submit old household items for collection (fridge, washing machine, metal scraps, broken engines, and more).",
       icon: Icons.car_repair,
       color: AppColors.primaryGreen,
       isAppLogo: true,
@@ -195,7 +195,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     _buildFlowArrow(),
                     _buildFlowStep(Icons.send, 'Submit', 2),
                     _buildFlowArrow(),
-                    _buildFlowStep(Icons.monetization_on, 'Receive\nCash', 3),
+                    _buildFlowStep(Icons.check_circle_outline, 'Collected', 3),
                   ],
                 ),
               ),
@@ -204,7 +204,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: const Text(
-                'Join thousands of users to earn from this app',
+                'Submit your details and photos. We’ll arrange collection when your request is ready.',
                 style: TextStyle(
                   fontSize: 17,
                   color: AppColors.textGrey,

@@ -1,8 +1,8 @@
 class AppImages {
-  // Main app logo
-  static const String logo = 'assets/scraps.png';
-  static const String icon = 'assets/scraps_icon.png';
-  static const String splash = 'assets/scraps_splash.png';
+  // Main app logo / icon (single source: app_icon_new.png)
+  static const String logo = 'assets/app_icon_new.png';
+  static const String icon = 'assets/app_icon_new.png';
+  static const String splash = 'assets/app_icon_new.png';
   static const String oldLogo = 'assets/ecg_logo.png';
 
   // Image dimensions for different use cases
