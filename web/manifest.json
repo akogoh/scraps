@@ -1,11 +1,11 @@
 {
-    "name": "GreenHaul",
-    "short_name": "GreenHaul",
+    "name": "Greenhaul",
+    "short_name": "Greenhaul",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "GreenHaul – scrap collection and tracking.",
+    "background_color": "#FFFFFF",
+    "theme_color": "#2E7D32",
+    "description": "Greenhaul – scrap collection and tracking.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

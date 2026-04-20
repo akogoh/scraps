@@ -1,5 +1,5 @@
 class AppImages {
-  // Main app logo / icon (single source: app_icon_new.png)
+  // In-app logo / splash (home-screen icon is generated via flutter_launcher_icons in pubspec.yaml)
   static const String logo = 'assets/app_icon_new.png';
   static const String icon = 'assets/app_icon_new.png';
   static const String splash = 'assets/app_icon_new.png';

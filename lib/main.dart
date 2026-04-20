@@ -41,7 +41,7 @@ class ScrapsApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'GreenHaul Solutions',
+      title: 'Greenhaul',
       theme: ThemeData(
         primarySwatch: Colors.green,
         primaryColor: const Color(0xFF2E7D32), // GreenHaul green
