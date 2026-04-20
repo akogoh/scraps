@@ -1,0 +1,35 @@
+# Codemagic: https://codemagic.io — connect this repo, add App Store Connect API key, then run this workflow.
+# In Codemagic: Integrations → App Store Connect → add API key (Issuer ID, Key ID, .p8).
+# Replace codemagic_app_store_connect below with your integration name from Team settings.
+
+workflows:
+  ios-release:
+    name: Greenhaul iOS (App Store / TestFlight)
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: codemagic_app_store_connect
+    environment:
+      flutter: stable
+      xcode: latest
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.greenhaul.scraps
+    scripts:
+      - name: Dependencies
+        script: |
+          set -e
+          flutter pub get
+          cd ios && pod install
+      - name: Code signing (Codemagic)
+        script: xcode-project use-profiles
+      - name: Build IPA
+        script: flutter build ipa --release
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      # Turn on after App Store Connect + signing work: set submit_to_testflight: true
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: false
