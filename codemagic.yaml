@@ -19,6 +19,12 @@ workflows:
         script: |
           set -e
           keychain initialize
+          # Generate a fresh Apple Distribution cert + private key on this builder,
+          # save them to disk so the next step can find the key when packaging the .p12.
+          app-store-connect create-certificate \
+            --type IOS_DISTRIBUTION \
+            --save
+          # Create (or reuse) the App Store provisioning profile for the bundle id.
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
             --create
