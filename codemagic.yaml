@@ -12,19 +12,30 @@ workflows:
     environment:
       flutter: stable
       xcode: latest
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.greenhaul.scraps
+      vars:
+        BUNDLE_ID: "com.greenhaul.scraps"
     scripts:
-      - name: Dependencies
+      - name: Set up code signing
+        script: |
+          set -e
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+          keychain add-certificates
+          xcode-project use-profiles
+      - name: Flutter dependencies
         script: |
           set -e
           flutter pub get
+      - name: Install CocoaPods
+        script: |
+          set -e
           cd ios && pod install
-      - name: Code signing (Codemagic)
-        script: xcode-project use-profiles
       - name: Build IPA
-        script: flutter build ipa --release
+        script: |
+          set -e
+          flutter build ipa --release
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
