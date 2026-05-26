@@ -19,14 +19,20 @@ workflows:
         script: |
           set -e
           keychain initialize
-          # Generate a fresh Apple Distribution cert + private key on this builder,
-          # save them to disk so the next step can find the key when packaging the .p12.
-          app-store-connect create-certificate \
+          # Generate a fresh RSA private key locally; it'll be used for the
+          # Apple Distribution certificate and bundled into the .p12 later.
+          openssl genrsa -out /tmp/ios_distribution_key.pem 2048
+          # Create the Apple Distribution certificate in App Store Connect
+          # using our locally-generated private key, and save the cert + key
+          # pair to the codemagic-cli-tools managed store.
+          app-store-connect certificates create \
             --type IOS_DISTRIBUTION \
+            --certificate-key=@file:/tmp/ios_distribution_key.pem \
             --save
           # Create (or reuse) the App Store provisioning profile for the bundle id.
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
+            --certificate-key=@file:/tmp/ios_distribution_key.pem \
             --create
           keychain add-certificates
           xcode-project use-profiles
