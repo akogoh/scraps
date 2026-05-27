@@ -10,19 +10,26 @@ workflows:
     integrations:
       app_store_connect: codemagic_app_store_connect
     environment:
-      # Codemagic auto code signing: fetches (or creates+persists) the iOS
-      # Distribution cert and App Store provisioning profile for this bundle
-      # id via the App Store Connect integration above. The private key is
-      # stored in Codemagic's secure storage and reused across builds, so we
-      # don't recreate a cert each build (which Apple rejects with HTTP 409).
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.greenhaul.scraps
       flutter: stable
       xcode: latest
       vars:
         BUNDLE_ID: "com.greenhaul.scraps"
     scripts:
+      - name: Set up code signing
+        script: |
+          set -e
+          keychain initialize
+          # Fetch (or create) the iOS Distribution cert AND the App Store
+          # provisioning profile for this bundle id. Crucially, we do NOT
+          # pass --certificate-key here: that makes the CLI use Codemagic's
+          # built-in secure storage for the private key, so the cert it
+          # creates once is reused on every subsequent build instead of
+          # tripping Apple's "one active Distribution cert per team" limit.
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+          keychain add-certificates
+          xcode-project use-profiles
       - name: Flutter dependencies
         script: |
           set -e
