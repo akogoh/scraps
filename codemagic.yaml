@@ -10,6 +10,8 @@ workflows:
     integrations:
       app_store_connect: codemagic_app_store_connect
     environment:
+      groups:
+        - ios_signing # must contain IOS_CERT_KEY (secure)
       flutter: stable
       xcode: latest
       vars:
