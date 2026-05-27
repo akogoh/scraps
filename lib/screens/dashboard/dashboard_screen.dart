@@ -502,7 +502,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ],
                 ),
               ),
-              // Logout & version
+              // Logout, Delete Account & version
               Container(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                 decoration: BoxDecoration(
@@ -542,6 +542,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 'Logout',
                                 style: TextStyle(
                                   color: Colors.red,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: _showDeleteAccountDialog,
+                        borderRadius: BorderRadius.circular(14),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.shade900.withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(
+                                  Icons.delete_forever_rounded,
+                                  color: Colors.red.shade900,
+                                  size: 22,
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Text(
+                                'Delete Account',
+                                style: TextStyle(
+                                  color: Colors.red.shade900,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -1335,6 +1374,130 @@ class _DashboardScreenState extends State<DashboardScreen> {
         );
       },
     );
+  }
+
+  /// In-app account deletion (Apple App Store Guideline 5.1.1(v)).
+  /// Requires the user to type DELETE to confirm — guards against
+  /// accidental taps and signals the destructive nature clearly.
+  void _showDeleteAccountDialog() {
+    final controller = TextEditingController();
+    bool canDelete = false;
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.delete_forever_rounded,
+                      color: Colors.red.shade900),
+                  const SizedBox(width: 8),
+                  const Text('Delete Account'),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'This will permanently delete:',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text('• Your account and profile'),
+                  const Text('• All your scrap submissions'),
+                  const Text('• All your photos and videos'),
+                  const Text('• All your messages with our team'),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'This action cannot be undone. To confirm, type DELETE below.',
+                    style: TextStyle(color: Colors.black87),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: controller,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: const InputDecoration(
+                      hintText: 'Type DELETE',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    onChanged: (value) {
+                      final next = value.trim().toUpperCase() == 'DELETE';
+                      if (next != canDelete) {
+                        setStateDialog(() => canDelete = next);
+                      }
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: canDelete
+                      ? () {
+                          Navigator.pop(dialogContext);
+                          _performAccountDeletion();
+                        }
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red.shade900,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: Colors.grey.shade300,
+                  ),
+                  child: const Text('Delete Forever'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _performAccountDeletion() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(color: AppColors.primaryGreen),
+      ),
+    );
+
+    try {
+      await SupabaseService.deleteAccount(userId: widget.user.id);
+      await SessionManager.clearUserSession();
+
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(); // dismiss loader
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Account deleted. Goodbye.'),
+          backgroundColor: AppColors.primaryGreen,
+        ),
+      );
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/onboarding',
+        (route) => false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(); // dismiss loader
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not delete account: $e'),
+          backgroundColor: Colors.red.shade900,
+          duration: const Duration(seconds: 6),
+        ),
+      );
+    }
   }
 
   void _showHelpDialog() {

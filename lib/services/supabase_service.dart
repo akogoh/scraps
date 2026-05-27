@@ -423,4 +423,88 @@ class SupabaseService {
       return false;
     }
   }
+
+  /// Permanently deletes the user account and every record we hold for it.
+  /// Required by Apple App Store Guideline 5.1.1(v) for any app that lets
+  /// users create accounts. Best-effort cleanup of media files; non-fatal
+  /// failures on side tables are logged but don't abort the user record
+  /// deletion, since failing to remove the user row would leave the account
+  /// active and break the guideline.
+  static Future<void> deleteAccount({
+    required String userId,
+  }) async {
+    // 1. Pull submissions so we can clean up media + dependent messages.
+    List<dynamic> submissions = const [];
+    try {
+      submissions = await _client
+          .from('scrap_submissions')
+          .select('id, image_url, video_url')
+          .eq('user_id', userId);
+    } catch (e) {
+      print('⚠️ deleteAccount: could not list submissions: $e');
+    }
+
+    final mediaPaths = <String>[];
+    final submissionIds = <String>[];
+    for (final s in submissions) {
+      final id = s['id']?.toString();
+      if (id != null) submissionIds.add(id);
+      final imagePath = _extractScrapMediaPath(s['image_url'] as String?);
+      final videoPath = _extractScrapMediaPath(s['video_url'] as String?);
+      if (imagePath != null) mediaPaths.add(imagePath);
+      if (videoPath != null) mediaPaths.add(videoPath);
+    }
+
+    // 2. Best-effort delete storage objects.
+    if (mediaPaths.isNotEmpty) {
+      try {
+        await _client.storage.from('scrap-media').remove(mediaPaths);
+      } catch (e) {
+        print('⚠️ deleteAccount: media cleanup failed: $e');
+      }
+    }
+
+    // 3. Delete messages attached to this user's submissions.
+    if (submissionIds.isNotEmpty) {
+      try {
+        await _client
+            .from('messages')
+            .delete()
+            .inFilter('submission_id', submissionIds);
+      } catch (e) {
+        print('⚠️ deleteAccount: messages cleanup failed: $e');
+      }
+    }
+
+    // 4. Delete submissions.
+    try {
+      await _client.from('scrap_submissions').delete().eq('user_id', userId);
+    } catch (e) {
+      print('⚠️ deleteAccount: submissions cleanup failed: $e');
+    }
+
+    // 5. Delete push notification tokens.
+    try {
+      await _client.from('fcm_tokens').delete().eq('user_id', userId);
+    } catch (e) {
+      print('⚠️ deleteAccount: fcm_tokens cleanup failed: $e');
+    }
+
+    // 6. Finally, delete the user record itself. This is the only step we
+    //    let throw, because if the user row survives, the account isn't
+    //    actually deleted from Apple's standpoint.
+    await _client.from('users').delete().eq('id', userId);
+  }
+
+  /// Extracts the storage object path from a Supabase public URL of the
+  /// form `https://<project>.supabase.co/storage/v1/object/public/scrap-media/<path>`.
+  /// Returns null for empty, malformed, or non-matching URLs.
+  static String? _extractScrapMediaPath(String? publicUrl) {
+    if (publicUrl == null || publicUrl.isEmpty) return null;
+    const marker = '/scrap-media/';
+    final idx = publicUrl.indexOf(marker);
+    if (idx == -1) return null;
+    final path = publicUrl.substring(idx + marker.length);
+    return path.isEmpty ? null : path;
+  }
 }
