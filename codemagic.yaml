@@ -19,14 +19,15 @@ workflows:
         script: |
           set -e
           keychain initialize
-          # Fetch (or create) the iOS Distribution cert AND the App Store
-          # provisioning profile for this bundle id. Crucially, we do NOT
-          # pass --certificate-key here: that makes the CLI use Codemagic's
-          # built-in secure storage for the private key, so the cert it
-          # creates once is reused on every subsequent build instead of
-          # tripping Apple's "one active Distribution cert per team" limit.
+          # Reuse a persistent RSA private key stored as a secure Codemagic
+          # env var (IOS_CERT_KEY). On the first build the CLI uses this
+          # key to create the iOS Distribution cert + App Store profile in
+          # App Store Connect; on every subsequent build it matches the
+          # public-key fingerprint and just downloads the existing cert,
+          # so we never hit Apple's "one active Distribution cert" 409.
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
+            --certificate-key=@env:IOS_CERT_KEY \
             --create
           keychain add-certificates
           xcode-project use-profiles
