@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'dart:io';
 import '../../services/supabase_service.dart';
 import '../../services/session_manager.dart';
@@ -45,7 +46,56 @@ class _ScrapSubmissionScreenState extends State<ScrapSubmissionScreen> {
     super.dispose();
   }
 
+  /// Requests the iOS/Android camera (and optionally microphone) permission
+  /// before invoking image_picker. Returns true only when we're cleared to
+  /// proceed; otherwise surfaces a helpful snackbar (with an Open Settings
+  /// action when the user has permanently denied access).
+  Future<bool> _ensureCapturePermissions({required bool needsMicrophone}) async {
+    if (kIsWeb) return true;
+
+    final permissions = <Permission>[Permission.camera];
+    if (needsMicrophone) permissions.add(Permission.microphone);
+
+    final statuses = await permissions.request();
+
+    for (final entry in statuses.entries) {
+      final status = entry.value;
+      if (status.isGranted || status.isLimited) continue;
+
+      final label = entry.key == Permission.camera ? 'Camera' : 'Microphone';
+      if (status.isPermanentlyDenied || status.isRestricted) {
+        _showPermissionDeniedSnack(
+          '$label access is turned off. Open Settings to enable it.',
+        );
+      } else {
+        _showSnackBar('$label permission is required to continue.');
+      }
+      return false;
+    }
+    return true;
+  }
+
+  void _showPermissionDeniedSnack(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: AppColors.accentOrange,
+          duration: const Duration(seconds: 5),
+          action: SnackBarAction(
+            label: 'Settings',
+            textColor: Colors.white,
+            onPressed: openAppSettings,
+          ),
+        ),
+      );
+  }
+
   Future<void> _pickImage() async {
+    final ok = await _ensureCapturePermissions(needsMicrophone: false);
+    if (!ok) return;
+
     try {
       final XFile? image = await _picker.pickImage(
         source: kIsWeb ? ImageSource.gallery : ImageSource.camera,
@@ -76,6 +126,9 @@ class _ScrapSubmissionScreenState extends State<ScrapSubmissionScreen> {
   }
 
   Future<void> _pickVideo() async {
+    final ok = await _ensureCapturePermissions(needsMicrophone: true);
+    if (!ok) return;
+
     try {
       final XFile? video = await _picker.pickVideo(
         source: kIsWeb ? ImageSource.gallery : ImageSource.camera,
@@ -143,9 +196,13 @@ class _ScrapSubmissionScreenState extends State<ScrapSubmissionScreen> {
       }
 
       if (permission == LocationPermission.deniedForever) {
-        _showSnackBar(kIsWeb
-            ? 'Location permission denied in browser. Click the lock icon in the address bar and allow Location.'
-            : 'Location permissions are permanently denied.');
+        if (kIsWeb) {
+          _showSnackBar(
+              'Location permission denied in browser. Click the lock icon in the address bar and allow Location.');
+        } else {
+          _showPermissionDeniedSnack(
+              'Location access is turned off. Open Settings to enable it.');
+        }
         return;
       }
 
